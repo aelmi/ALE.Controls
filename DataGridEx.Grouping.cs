@@ -18,7 +18,7 @@ namespace ALE.Controls
                 _groupProperty = value;
                 _collapsedGroups.Clear();
                 UpdateGroupPanelUI();
-                ApplySortAndFilter(); // Defined in Filtering.cs
+                ApplySortAndFilter();
             }
         }
 

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 using System.Windows.Forms;
 using ALE.Controls.Filtering;
 using ALE.Controls.Grouping;
@@ -41,7 +40,7 @@ namespace ALE.Controls
         private void PopulateAllProperties()
         {
             if (_itemType == null) return;
-            foreach (var prop in _itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            foreach (var prop in _itemType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
             {
                 if (!_propertyToHeader.ContainsKey(prop.Name))
                 {
@@ -52,7 +51,9 @@ namespace ALE.Controls
 
         private void Grid_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (e.ColumnIndex < 0) return;
+            // Do not sort if it's a right click (handled by context menu)
+            if (e.ColumnIndex < 0 || e.Button != MouseButtons.Left) return;
+
             var col = _grid.Columns[e.ColumnIndex];
             if (string.IsNullOrEmpty(col.DataPropertyName)) return;
 
@@ -155,7 +156,7 @@ namespace ALE.Controls
                 .OrderBy(x => x.Header)
                 .ToList();
 
-            using var dlg = new FilterExpressionDialog(allFields, _itemType, _activeFilter, Theme);
+            using var dlg = new FilterExpressionDialog(allFields, _itemType, _activeFilter, _currentTheme);
             if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK)
             {
                 _activeFilter = dlg.ResultFilter;

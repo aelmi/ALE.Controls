@@ -14,7 +14,7 @@ namespace ALE.Controls
     public partial class DataGridEx : UserControl
     {
         // ==========================================
-        // ALL PRIVATE FIELDS DECLARATION
+        // ALL PRIVATE FIELDS (DECLARED ONLY HERE)
         // ==========================================
         private DataGridView _grid;
         private List<object> _sourceData = new();
@@ -29,6 +29,14 @@ namespace ALE.Controls
         private GridTheme _currentTheme = GridTheme.Clean;
         private bool _showThemeSelector = false;
         private int _hoveredRowIndex = -1;
+
+        // Context Menu Fields
+        private ContextMenuStrip _contextMenu;
+        private ToolStripMenuItem _mnuAutoSize; // Kept reference for toggle state
+        private bool _showContextMenu = true;
+        private int _rightClickRowIndex = -1;
+        private int _rightClickColIndex = -1;
+        private readonly Dictionary<string, int> _originalColumnWidths = new(); // Stores widths before auto-sizing
 
         private Panel _groupPanel;
         private Label _lblGroupHint;
@@ -72,6 +80,15 @@ namespace ALE.Controls
             }
         }
 
+        [Category("Behavior")]
+        [DefaultValue(true)]
+        [Description("Determines if the right-click context menu is available.")]
+        public bool ShowContextMenu
+        {
+            get => _showContextMenu;
+            set => _showContextMenu = value;
+        }
+
         [Browsable(false)]
         public IReadOnlyDictionary<string, string> PropertyHeaders => _propertyToHeader;
 
@@ -84,6 +101,7 @@ namespace ALE.Controls
 
             SetupToolbarAndTheme();
             SetupGroupPanel();
+            SetupContextMenu();
             SetupGrid();
 
             ApplyTheme();
@@ -92,6 +110,29 @@ namespace ALE.Controls
             {
                 SetupDesignTimeAppearance();
             }
+        }
+
+        private void SetupContextMenu()
+        {
+            _contextMenu = new ContextMenuStrip();
+
+            var mnuCopyCell = new ToolStripMenuItem("Copy Cell");
+            mnuCopyCell.Click += (s, e) => CopyCell();
+
+            var mnuCopyRow = new ToolStripMenuItem("Copy Row");
+            mnuCopyRow.Click += (s, e) => CopyRow();
+
+            _mnuAutoSize = new ToolStripMenuItem("Auto-size Columns");
+            _mnuAutoSize.CheckOnClick = true; // Enables the checkmark toggle
+            _mnuAutoSize.Click += (s, e) => ToggleAutoSizeColumns();
+
+            _contextMenu.Items.AddRange(new ToolStripItem[]
+            {
+                mnuCopyCell,
+                mnuCopyRow,
+                new ToolStripSeparator(),
+                _mnuAutoSize
+            });
         }
 
         private void SetupGrid()
@@ -141,6 +182,10 @@ namespace ALE.Controls
                 }
             };
 
+            // Hooks for Context Menu
+            _grid.CellMouseDown += Grid_CellMouseDown;
+
+            // Hooks for partial classes
             _grid.MouseDown += Grid_MouseDown;
             _grid.MouseMove += Grid_MouseMove;
             _grid.DragEnter += Grid_DragEnter;
@@ -152,6 +197,96 @@ namespace ALE.Controls
             Controls.Add(_grid);
             _grid.BringToFront();
         }
+
+        // ==========================================
+        // CONTEXT MENU LOGIC
+        // ==========================================
+
+        private void Grid_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right && _showContextMenu)
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+                {
+                    _rightClickRowIndex = e.RowIndex;
+                    _rightClickColIndex = e.ColumnIndex;
+
+                    _grid.ClearSelection();
+                    _grid.Rows[e.RowIndex].Selected = true;
+
+                    var item = _grid.Rows[e.RowIndex].DataBoundItem;
+                    bool isDataRow = !(item is GroupInfo);
+                    _contextMenu.Items[0].Enabled = isDataRow;
+                    _contextMenu.Items[1].Enabled = isDataRow;
+
+                    _contextMenu.Show(Cursor.Position);
+                }
+                else if (e.RowIndex == -1 && e.ColumnIndex >= 0)
+                {
+                    _rightClickRowIndex = -1;
+                    _rightClickColIndex = e.ColumnIndex;
+                    _contextMenu.Items[0].Enabled = false;
+                    _contextMenu.Items[1].Enabled = false;
+                    _contextMenu.Show(Cursor.Position);
+                }
+            }
+        }
+
+        private void CopyCell()
+        {
+            if (_rightClickRowIndex >= 0 && _rightClickColIndex >= 0)
+            {
+                var val = _grid.Rows[_rightClickRowIndex].Cells[_rightClickColIndex].Value;
+                if (val != null) Clipboard.SetText(val.ToString());
+            }
+        }
+
+        private void CopyRow()
+        {
+            if (_rightClickRowIndex >= 0)
+            {
+                var row = _grid.Rows[_rightClickRowIndex];
+                var values = new List<string>();
+                foreach (DataGridViewCell cell in row.Cells)
+                {
+                    if (cell.Visible)
+                    {
+                        values.Add(cell.Value?.ToString() ?? "");
+                    }
+                }
+                if (values.Count > 0) Clipboard.SetText(string.Join("\t", values));
+            }
+        }
+
+        private void ToggleAutoSizeColumns()
+        {
+            if (_mnuAutoSize.Checked)
+            {
+                // Save original widths before auto-sizing
+                _originalColumnWidths.Clear();
+                foreach (DataGridViewColumn col in _grid.Columns)
+                {
+                    _originalColumnWidths[col.Name] = col.Width;
+                }
+
+                _grid.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
+            }
+            else
+            {
+                // Restore original widths
+                foreach (DataGridViewColumn col in _grid.Columns)
+                {
+                    if (_originalColumnWidths.TryGetValue(col.Name, out int originalWidth))
+                    {
+                        col.Width = originalWidth;
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // TOOLBAR & THEMING
+        // ==========================================
 
         private void SetupToolbarAndTheme()
         {
@@ -194,6 +329,12 @@ namespace ALE.Controls
                 _groupPanel.BackColor = p.ToolbarBackground;
                 _groupPanel.ForeColor = p.TextPrimary;
                 UpdateGroupPanelUI();
+            }
+
+            if (_contextMenu != null)
+            {
+                _contextMenu.BackColor = p.ToolbarBackground;
+                _contextMenu.ForeColor = p.TextPrimary;
             }
 
             if (_currentTheme == GridTheme.None)
@@ -250,13 +391,9 @@ namespace ALE.Controls
                 BackColor = p.ToolbarBackground;
             }
 
-            // SCRUB EXISTING ROWS: Force existing rows to inherit the new theme immediately
             if (_grid.Rows.Count > 0)
             {
-                for (int i = 0; i < _grid.Rows.Count; i++)
-                {
-                    UpdateRowStyle(i);
-                }
+                for (int i = 0; i < _grid.Rows.Count; i++) UpdateRowStyle(i);
                 _grid.Invalidate();
             }
         }
@@ -264,7 +401,6 @@ namespace ALE.Controls
         private void UpdateRowStyle(int rowIndex)
         {
             if (rowIndex < 0 || rowIndex >= _grid.RowCount) return;
-
             var p = ThemePalette.GetPalette(_currentTheme);
             var item = _grid.Rows[rowIndex].DataBoundItem;
 
@@ -272,7 +408,6 @@ namespace ALE.Controls
 
             if (rowIndex == _hoveredRowIndex)
             {
-                // Apply the hover overlay directly
                 _grid.Rows[rowIndex].DefaultCellStyle.BackColor = p.RowHover;
                 _grid.Rows[rowIndex].DefaultCellStyle.ForeColor = p.TextPrimary;
                 _grid.Rows[rowIndex].DefaultCellStyle.SelectionBackColor = p.SelectionBackground;
@@ -280,8 +415,6 @@ namespace ALE.Controls
             }
             else
             {
-                // FIX: Setting it to Color.Empty strips away the old memory, 
-                // forcing the row to inherit the pristine Grid-Level theme you just applied.
                 _grid.Rows[rowIndex].DefaultCellStyle.BackColor = Color.Empty;
                 _grid.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.Empty;
                 _grid.Rows[rowIndex].DefaultCellStyle.SelectionBackColor = Color.Empty;
