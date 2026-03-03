@@ -218,7 +218,9 @@ namespace ALE.Controls.Filtering
                     menuItem.Checked = (LogicalOperator)menuItem.Tag == _logic;
             }
 
-            foreach (var node in group.Children)
+            // FIX: Use .ToList() to create a copy of the collection so we don't 
+            // modify it while enumerating when AddConditionRow triggers RebuildGroup()
+            foreach (var node in group.Children.ToList())
             {
                 if (node.IsGroup)
                     AddNestedGroup(node.Group);
