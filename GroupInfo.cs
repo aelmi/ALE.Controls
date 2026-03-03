@@ -10,6 +10,8 @@ namespace ALE.Controls.Grouping
         public string PropertyName { get; set; }
         public bool IsCollapsed { get; set; }
         public int ChildCount { get; set; }
+        public int Level { get; set; }
+        public string GroupPath { get; set; } // Tracks unique composite path (e.g. "IT|Brisbane")
     }
 
     public class SafePropertyDescriptor : PropertyDescriptor

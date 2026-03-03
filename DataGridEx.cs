@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
-using System.Reflection;
 using System.Windows.Forms;
 using ALE.Controls.Filtering;
 using ALE.Controls.Theming;
@@ -30,20 +29,21 @@ namespace ALE.Controls
         private bool _showThemeSelector = false;
         private int _hoveredRowIndex = -1;
 
-        // Context Menu Fields
         private ContextMenuStrip _contextMenu;
-        private ToolStripMenuItem _mnuAutoSize; // Kept reference for toggle state
+        private ToolStripMenuItem _mnuAutoSize;
         private bool _showContextMenu = true;
         private int _rightClickRowIndex = -1;
         private int _rightClickColIndex = -1;
-        private readonly Dictionary<string, int> _originalColumnWidths = new(); // Stores widths before auto-sizing
+        private readonly Dictionary<string, int> _originalColumnWidths = new();
 
         private Panel _groupPanel;
         private Label _lblGroupHint;
         private FlowLayoutPanel _groupChipsPanel;
         private Rectangle _dragBoxFromMouseDown;
         private string _draggedColumnName;
-        private string _groupProperty = null;
+
+        // MULTI-LEVEL GROUPING STATE
+        private readonly List<string> _groupProperties = new();
         private readonly Dictionary<string, bool> _collapsedGroups = new();
 
         private FilterGroup _activeFilter;
@@ -82,7 +82,6 @@ namespace ALE.Controls
 
         [Category("Behavior")]
         [DefaultValue(true)]
-        [Description("Determines if the right-click context menu is available.")]
         public bool ShowContextMenu
         {
             get => _showContextMenu;
@@ -91,6 +90,18 @@ namespace ALE.Controls
 
         [Browsable(false)]
         public IReadOnlyDictionary<string, string> PropertyHeaders => _propertyToHeader;
+
+        // Method to assign grouping programmatically (e.g. from TestForm)
+        public void AddGroupProperty(string propertyName)
+        {
+            if (!_groupProperties.Contains(propertyName))
+            {
+                _groupProperties.Add(propertyName);
+                _collapsedGroups.Clear();
+                UpdateGroupPanelUI();
+                ApplySortAndFilter();
+            }
+        }
 
         // ==========================================
         // INITIALIZATION
@@ -122,16 +133,12 @@ namespace ALE.Controls
             var mnuCopyRow = new ToolStripMenuItem("Copy Row");
             mnuCopyRow.Click += (s, e) => CopyRow();
 
-            _mnuAutoSize = new ToolStripMenuItem("Auto-size Columns");
-            _mnuAutoSize.CheckOnClick = true; // Enables the checkmark toggle
+            _mnuAutoSize = new ToolStripMenuItem("Auto-size Columns") { CheckOnClick = true };
             _mnuAutoSize.Click += (s, e) => ToggleAutoSizeColumns();
 
             _contextMenu.Items.AddRange(new ToolStripItem[]
             {
-                mnuCopyCell,
-                mnuCopyRow,
-                new ToolStripSeparator(),
-                _mnuAutoSize
+                mnuCopyCell, mnuCopyRow, new ToolStripSeparator(), _mnuAutoSize
             });
         }
 
@@ -182,10 +189,7 @@ namespace ALE.Controls
                 }
             };
 
-            // Hooks for Context Menu
             _grid.CellMouseDown += Grid_CellMouseDown;
-
-            // Hooks for partial classes
             _grid.MouseDown += Grid_MouseDown;
             _grid.MouseMove += Grid_MouseMove;
             _grid.DragEnter += Grid_DragEnter;
@@ -201,7 +205,6 @@ namespace ALE.Controls
         // ==========================================
         // CONTEXT MENU LOGIC
         // ==========================================
-
         private void Grid_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right && _showContextMenu)
@@ -249,10 +252,7 @@ namespace ALE.Controls
                 var values = new List<string>();
                 foreach (DataGridViewCell cell in row.Cells)
                 {
-                    if (cell.Visible)
-                    {
-                        values.Add(cell.Value?.ToString() ?? "");
-                    }
+                    if (cell.Visible) values.Add(cell.Value?.ToString() ?? "");
                 }
                 if (values.Count > 0) Clipboard.SetText(string.Join("\t", values));
             }
@@ -262,24 +262,18 @@ namespace ALE.Controls
         {
             if (_mnuAutoSize.Checked)
             {
-                // Save original widths before auto-sizing
                 _originalColumnWidths.Clear();
                 foreach (DataGridViewColumn col in _grid.Columns)
-                {
                     _originalColumnWidths[col.Name] = col.Width;
-                }
 
                 _grid.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
             }
             else
             {
-                // Restore original widths
                 foreach (DataGridViewColumn col in _grid.Columns)
                 {
                     if (_originalColumnWidths.TryGetValue(col.Name, out int originalWidth))
-                    {
                         col.Width = originalWidth;
-                    }
                 }
             }
         }
@@ -287,7 +281,6 @@ namespace ALE.Controls
         // ==========================================
         // TOOLBAR & THEMING
         // ==========================================
-
         private void SetupToolbarAndTheme()
         {
             var topPanel = new Panel { Dock = DockStyle.Top, Height = 36 };
@@ -304,9 +297,7 @@ namespace ALE.Controls
             _btnTheme = new ToolStripDropDownButton("Theme");
 
             foreach (GridTheme t in Enum.GetValues(typeof(GridTheme)))
-            {
                 _btnTheme.DropDownItems.Add(new ToolStripMenuItem(t.ToString(), null, (_, _) => Theme = t));
-            }
 
             _btnTheme.Visible = _showThemeSelector;
 
@@ -387,7 +378,6 @@ namespace ALE.Controls
                     Padding = new Padding(8, 6, 8, 6),
                     Alignment = DataGridViewContentAlignment.MiddleLeft
                 };
-
                 BackColor = p.ToolbarBackground;
             }
 
@@ -427,11 +417,9 @@ namespace ALE.Controls
             _grid.Columns.Add("Col1", "Column 1");
             _grid.Columns.Add("Col2", "Column 2");
             _grid.Columns.Add("Col3", "Column 3");
-
             _grid.Columns[0].Width = 150;
             _grid.Columns[1].Width = 150;
             _grid.Columns[2].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
             _grid.Rows.Add("Sample Data 1", "Active", "100");
             _grid.Rows.Add("Sample Data 2", "Inactive", "200");
             _grid.ClearSelection();

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using ALE.Controls.Grouping;
@@ -9,19 +8,6 @@ namespace ALE.Controls
 {
     public partial class DataGridEx
     {
-        [Category("Behavior")]
-        public string GroupByProperty
-        {
-            get => _groupProperty;
-            set
-            {
-                _groupProperty = value;
-                _collapsedGroups.Clear();
-                UpdateGroupPanelUI();
-                ApplySortAndFilter();
-            }
-        }
-
         private void SetupGroupPanel()
         {
             _groupPanel = new Panel
@@ -65,7 +51,7 @@ namespace ALE.Controls
 
             _groupChipsPanel.Controls.Clear();
 
-            if (string.IsNullOrEmpty(_groupProperty))
+            if (_groupProperties.Count == 0)
             {
                 _lblGroupHint.Visible = true;
                 _groupChipsPanel.Visible = false;
@@ -74,63 +60,72 @@ namespace ALE.Controls
             {
                 _lblGroupHint.Visible = false;
                 _groupChipsPanel.Visible = true;
-
-                string headerText = _propertyToHeader.ContainsKey(_groupProperty)
-                    ? _propertyToHeader[_groupProperty]
-                    : _groupProperty;
-
                 var p = ThemePalette.GetPalette(_currentTheme);
 
-                var chip = new FlowLayoutPanel
+                for (int i = 0; i < _groupProperties.Count; i++)
                 {
-                    AutoSize = true,
-                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                    Height = 28,
-                    WrapContents = false,
-                    BackColor = p.Accent,
-                    ForeColor = Color.White,
-                    Margin = new Padding(0, 0, 8, 0),
-                    Cursor = Cursors.SizeAll
-                };
+                    string prop = _groupProperties[i];
+                    string headerText = _propertyToHeader.ContainsKey(prop) ? _propertyToHeader[prop] : prop;
 
-                var lbl = new Label
-                {
-                    Text = headerText,
-                    AutoSize = true,
-                    TextAlign = ContentAlignment.MiddleCenter,
-                    Padding = new Padding(8, 4, 2, 4),
-                    Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                    Margin = new Padding(0)
-                };
+                    var chip = new FlowLayoutPanel
+                    {
+                        AutoSize = true,
+                        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                        Height = 28,
+                        WrapContents = false,
+                        BackColor = p.Accent,
+                        ForeColor = Color.White,
+                        Margin = new Padding(0, 0, 8, 0),
+                        Cursor = Cursors.SizeAll
+                    };
 
-                var btnClose = new Button
-                {
-                    Text = "×",
-                    Width = 24,
-                    Height = 24,
-                    FlatStyle = FlatStyle.Flat,
-                    Cursor = Cursors.Hand,
-                    Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-                    TextAlign = ContentAlignment.MiddleCenter,
-                    Margin = new Padding(0, 2, 4, 0)
-                };
-                btnClose.FlatAppearance.BorderSize = 0;
-                btnClose.FlatAppearance.MouseOverBackColor = Color.FromArgb(60, Color.Black);
+                    var lbl = new Label
+                    {
+                        Text = headerText,
+                        AutoSize = true,
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Padding = new Padding(8, 4, 2, 4),
+                        Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                        Margin = new Padding(0)
+                    };
 
-                btnClose.Click += (s, e) => { GroupByProperty = null; };
+                    var btnClose = new Button
+                    {
+                        Text = "×",
+                        Width = 24,
+                        Height = 24,
+                        FlatStyle = FlatStyle.Flat,
+                        Cursor = Cursors.Hand,
+                        Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Margin = new Padding(0, 2, 4, 0)
+                    };
+                    btnClose.FlatAppearance.BorderSize = 0;
+                    btnClose.FlatAppearance.MouseOverBackColor = Color.FromArgb(60, Color.Black);
 
-                chip.Controls.Add(lbl);
-                chip.Controls.Add(btnClose);
+                    // Remove specific group on click
+                    string propToRemove = prop;
+                    btnClose.Click += (s, e) => {
+                        _groupProperties.Remove(propToRemove);
+                        _collapsedGroups.Clear();
+                        UpdateGroupPanelUI();
+                        ApplySortAndFilter();
+                    };
 
-                MouseEventHandler startDrag = (s, e) =>
-                {
-                    if (e.Button == MouseButtons.Left)
-                        chip.DoDragDrop("UNGROUP_ACTION", DragDropEffects.Move);
-                };
-                chip.MouseDown += startDrag;
-                lbl.MouseDown += startDrag;
+                    chip.Controls.Add(lbl);
+                    chip.Controls.Add(btnClose);
 
-                _groupChipsPanel.Controls.Add(chip);
+                    // Tag the chip with the property name so we know what is dragged back to the grid
+                    MouseEventHandler startDrag = (s, e) =>
+                    {
+                        if (e.Button == MouseButtons.Left)
+                            chip.DoDragDrop($"UNGROUP:{propToRemove}", DragDropEffects.Move);
+                    };
+                    chip.MouseDown += startDrag;
+                    lbl.MouseDown += startDrag;
+
+                    _groupChipsPanel.Controls.Add(chip);
+                }
             }
         }
 
@@ -158,42 +153,55 @@ namespace ALE.Controls
             if ((e.Button & MouseButtons.Left) == MouseButtons.Left)
             {
                 if (_dragBoxFromMouseDown != Rectangle.Empty && !_dragBoxFromMouseDown.Contains(e.X, e.Y))
-                {
                     _grid.DoDragDrop(_draggedColumnName, DragDropEffects.Move);
-                }
             }
         }
 
         private void GroupPanel_DragEnter(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(string)) && (string)e.Data.GetData(typeof(string)) != "UNGROUP_ACTION")
-                e.Effect = DragDropEffects.Move;
-            else
-                e.Effect = DragDropEffects.None;
+            if (e.Data.GetDataPresent(typeof(string)))
+            {
+                string data = (string)e.Data.GetData(typeof(string));
+                if (!data.StartsWith("UNGROUP:")) e.Effect = DragDropEffects.Move;
+                else e.Effect = DragDropEffects.None;
+            }
         }
 
         private void GroupPanel_DragDrop(object sender, DragEventArgs e)
         {
             string colName = (string)e.Data.GetData(typeof(string));
-            if (!string.IsNullOrEmpty(colName) && colName != "UNGROUP_ACTION")
+            if (!string.IsNullOrEmpty(colName) && !colName.StartsWith("UNGROUP:"))
             {
-                GroupByProperty = colName;
+                if (!_groupProperties.Contains(colName))
+                {
+                    _groupProperties.Add(colName);
+                    _collapsedGroups.Clear();
+                    UpdateGroupPanelUI();
+                    ApplySortAndFilter();
+                }
             }
         }
 
         private void Grid_DragEnter(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(string)) && (string)e.Data.GetData(typeof(string)) == "UNGROUP_ACTION")
-                e.Effect = DragDropEffects.Move;
-            else
-                e.Effect = DragDropEffects.None;
+            if (e.Data.GetDataPresent(typeof(string)))
+            {
+                string data = (string)e.Data.GetData(typeof(string));
+                if (data.StartsWith("UNGROUP:")) e.Effect = DragDropEffects.Move;
+                else e.Effect = DragDropEffects.None;
+            }
         }
 
         private void Grid_DragDrop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(string)) && (string)e.Data.GetData(typeof(string)) == "UNGROUP_ACTION")
+            string data = (string)e.Data.GetData(typeof(string));
+            if (data != null && data.StartsWith("UNGROUP:"))
             {
-                GroupByProperty = null;
+                string propToRemove = data.Replace("UNGROUP:", "");
+                _groupProperties.Remove(propToRemove);
+                _collapsedGroups.Clear();
+                UpdateGroupPanelUI();
+                ApplySortAndFilter();
             }
         }
 
@@ -204,8 +212,7 @@ namespace ALE.Controls
                 var item = _grid.Rows[e.RowIndex].DataBoundItem;
                 if (item is GroupInfo group)
                 {
-                    string key = group.GroupValue?.ToString() ?? "None";
-                    _collapsedGroups[key] = !_collapsedGroups.GetValueOrDefault(key, false);
+                    _collapsedGroups[group.GroupPath] = !_collapsedGroups.GetValueOrDefault(group.GroupPath, false);
                     ApplySortAndFilter();
                 }
             }
@@ -225,14 +232,22 @@ namespace ALE.Controls
                 Color backColor = isSelected ? p.SelectionBackground : p.HeaderBackground;
                 Color foreColor = isSelected ? p.SelectionForeground : p.HeaderText;
 
+                // Alternate background color slightly based on nesting level to show visual hierarchy
+                if (group.Level > 0 && !isSelected)
+                {
+                    backColor = ControlPaint.Light(backColor, 0.5f + (group.Level * 0.1f));
+                }
+
                 e.Graphics.FillRectangle(new SolidBrush(backColor), rowBounds);
                 e.Graphics.DrawLine(new Pen(p.GridLines), rowBounds.Left, rowBounds.Bottom - 1, rowBounds.Right, rowBounds.Bottom - 1);
 
                 string chevron = group.IsCollapsed ? "▶" : "▼";
                 string text = $"  {chevron} {group.PropertyName}: {group.GroupValue}  ({group.ChildCount} items)";
 
+                // MULTI-LEVEL FIX: Shift text right by 20 pixels per level depth
+                int indent = 10 + (group.Level * 20);
                 TextRenderer.DrawText(e.Graphics, text, new Font(_grid.Font, FontStyle.Bold),
-                    new Point(rowBounds.Left + 10, rowBounds.Top + 8), foreColor);
+                    new Point(rowBounds.Left + indent, rowBounds.Top + 8), foreColor);
             }
         }
     }

@@ -42,25 +42,19 @@ namespace ALE.Controls
             if (_itemType == null) return;
             foreach (var prop in _itemType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
             {
-                if (!_propertyToHeader.ContainsKey(prop.Name))
-                {
-                    _propertyToHeader[prop.Name] = prop.Name;
-                }
+                if (!_propertyToHeader.ContainsKey(prop.Name)) _propertyToHeader[prop.Name] = prop.Name;
             }
         }
 
         private void Grid_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            // Do not sort if it's a right click (handled by context menu)
             if (e.ColumnIndex < 0 || e.Button != MouseButtons.Left) return;
 
             var col = _grid.Columns[e.ColumnIndex];
             if (string.IsNullOrEmpty(col.DataPropertyName)) return;
 
             if (_sortProperty == col.DataPropertyName)
-            {
                 _sortDirection = _sortDirection == ListSortDirection.Ascending ? ListSortDirection.Descending : ListSortDirection.Ascending;
-            }
             else
             {
                 _sortProperty = col.DataPropertyName;
@@ -73,10 +67,7 @@ namespace ALE.Controls
 
         private void UpdateSortGlyphs()
         {
-            foreach (DataGridViewColumn c in _grid.Columns)
-            {
-                c.HeaderCell.SortGlyphDirection = SortOrder.None;
-            }
+            foreach (DataGridViewColumn c in _grid.Columns) c.HeaderCell.SortGlyphDirection = SortOrder.None;
 
             if (!string.IsNullOrEmpty(_sortProperty) && _grid.Columns.Contains(_sortProperty))
             {
@@ -92,9 +83,7 @@ namespace ALE.Controls
             var filtered = _sourceData.AsEnumerable();
 
             if (_activeFilter != null && !_activeFilter.IsEmpty)
-            {
                 filtered = filtered.Where(item => _activeFilter.Evaluate(item, _itemType));
-            }
 
             if (!string.IsNullOrEmpty(_sortProperty))
             {
@@ -109,52 +98,72 @@ namespace ALE.Controls
 
             List<object> finalDisplayList = new();
 
-            if (!string.IsNullOrEmpty(_groupProperty))
+            if (_groupProperties.Count > 0)
             {
-                var groupProp = _itemType.GetProperty(_groupProperty);
-                if (groupProp != null)
-                {
-                    var groups = filtered.GroupBy(x => groupProp.GetValue(x) ?? "None");
-
-                    foreach (var g in groups)
-                    {
-                        string groupKey = g.Key.ToString();
-                        bool isCollapsed = _collapsedGroups.GetValueOrDefault(groupKey, false);
-
-                        finalDisplayList.Add(new GroupInfo
-                        {
-                            GroupValue = g.Key,
-                            PropertyName = _propertyToHeader.ContainsKey(_groupProperty) ? _propertyToHeader[_groupProperty] : _groupProperty,
-                            ChildCount = g.Count(),
-                            IsCollapsed = isCollapsed
-                        });
-
-                        if (!isCollapsed)
-                        {
-                            finalDisplayList.AddRange(g);
-                        }
-                    }
-                }
+                // Trigger recursive grouping
+                finalDisplayList.AddRange(GenerateGroupedList(filtered, 0, ""));
             }
             else
             {
                 finalDisplayList = filtered.ToList();
             }
 
-            // Bind using our safe ITypedList wrapper to prevent schema corruption
             _bindingList = new GroupedBindingList(finalDisplayList, _itemType);
             _grid.DataSource = _bindingList;
             UpdateFilterStatus();
         }
 
+        // ==========================================
+        // RECURSIVE MULTI-LEVEL ENGINE
+        // ==========================================
+        private IEnumerable<object> GenerateGroupedList(IEnumerable<object> data, int level, string parentPath)
+        {
+            // Base Case: We've reached the deepest group layer, just return the raw data rows
+            if (level >= _groupProperties.Count)
+            {
+                foreach (var item in data) yield return item;
+                yield break;
+            }
+
+            string currentPropName = _groupProperties[level];
+            var propInfo = _itemType.GetProperty(currentPropName);
+            if (propInfo == null) yield break;
+
+            var groups = data.GroupBy(x => propInfo.GetValue(x) ?? "None");
+
+            foreach (var g in groups)
+            {
+                string groupKey = g.Key.ToString();
+
+                // Track composite path to avoid collapse-state collisions between identically named sub-groups
+                string currentPath = string.IsNullOrEmpty(parentPath) ? groupKey : $"{parentPath}|{groupKey}";
+                bool isCollapsed = _collapsedGroups.GetValueOrDefault(currentPath, false);
+
+                yield return new GroupInfo
+                {
+                    GroupValue = g.Key,
+                    PropertyName = _propertyToHeader.ContainsKey(currentPropName) ? _propertyToHeader[currentPropName] : currentPropName,
+                    ChildCount = g.Count(), // Shows how many actual data rows exist inside this layer
+                    IsCollapsed = isCollapsed,
+                    Level = level,
+                    GroupPath = currentPath
+                };
+
+                // Drill down to the next grouping layer if this node is open
+                if (!isCollapsed)
+                {
+                    foreach (var child in GenerateGroupedList(g, level + 1, currentPath))
+                    {
+                        yield return child;
+                    }
+                }
+            }
+        }
+
         private void ShowFilterBuilder()
         {
             if (_itemType == null) return;
-
-            var allFields = _propertyToHeader
-                .Select(kvp => (Property: kvp.Key, Header: kvp.Value))
-                .OrderBy(x => x.Header)
-                .ToList();
+            var allFields = _propertyToHeader.Select(kvp => (Property: kvp.Key, Header: kvp.Value)).OrderBy(x => x.Header).ToList();
 
             using var dlg = new FilterExpressionDialog(allFields, _itemType, _activeFilter, _currentTheme);
             if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK)
