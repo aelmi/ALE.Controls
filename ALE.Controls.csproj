@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWindowsForms>true</UseWindowsForms>
+		<RootNamespace>ALE.Controls</RootNamespace>
+		<AssemblyName>ALE.Controls</AssemblyName>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<OutputType>WinExe</OutputType>
+	</PropertyGroup>
+	<ItemGroup>
+		<Compile Update="Filtering\FilterRowControl.cs">
+			<SubType>Code</SubType>
+		</Compile>
+		<Compile Update="Filtering\FilterGroupPanel.cs" />
+	</ItemGroup>
+</Project>
