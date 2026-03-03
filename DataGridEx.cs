@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using ALE.Controls.Filtering;
 using ALE.Controls.Theming;
@@ -29,6 +30,7 @@ namespace ALE.Controls
         private bool _showThemeSelector = false;
         private int _hoveredRowIndex = -1;
 
+        // Context Menu Fields
         private ContextMenuStrip _contextMenu;
         private ToolStripMenuItem _mnuAutoSize;
         private bool _showContextMenu = true;
@@ -82,6 +84,7 @@ namespace ALE.Controls
 
         [Category("Behavior")]
         [DefaultValue(true)]
+        [Description("Determines if the right-click context menu is available.")]
         public bool ShowContextMenu
         {
             get => _showContextMenu;
@@ -276,6 +279,23 @@ namespace ALE.Controls
                         col.Width = originalWidth;
                 }
             }
+        }
+
+        // ==========================================
+        // PUBLIC METHODS (UTILITY)
+        // ==========================================
+        public List<T> GetSelectedItems<T>() where T : class
+        {
+            var items = new List<T>();
+            // Iterate through all rows in visual order, picking out the selected ones
+            foreach (DataGridViewRow row in _grid.Rows)
+            {
+                if (row.Selected && row.DataBoundItem is T item)
+                {
+                    items.Add(item);
+                }
+            }
+            return items;
         }
 
         // ==========================================
