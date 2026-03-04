@@ -11,8 +11,6 @@ namespace ALE.Controls
         private void SetupGroupPanel()
         {
             _groupPanel = new Panel { Dock = DockStyle.Top, Height = 40, AllowDrop = true, Padding = new Padding(8, 6, 8, 6) };
-
-            // DYNAMIC FONT: Hint label
             _lblGroupHint = new Label { Text = "Drag a column header here to group by that column", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, ForeColor = Color.Gray, Font = new Font(this.Font.FontFamily, this.Font.Size, FontStyle.Italic) };
             _groupChipsPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Visible = false };
 
@@ -47,8 +45,6 @@ namespace ALE.Controls
                     string headerText = _propertyToHeader.ContainsKey(prop) ? _propertyToHeader[prop] : prop;
 
                     var chip = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Height = 28, WrapContents = false, BackColor = p.Accent, ForeColor = Color.White, Margin = new Padding(0, 0, 8, 0), Cursor = Cursors.SizeAll };
-
-                    // DYNAMIC FONT: Chip label and 'X' button
                     var lbl = new Label { Text = headerText, AutoSize = true, TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(8, 4, 2, 4), Font = new Font(this.Font.FontFamily, this.Font.Size, FontStyle.Bold), Margin = new Padding(0) };
                     var btnClose = new Button { Text = "×", Width = 24, Height = 24, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Font = new Font(this.Font.FontFamily, this.Font.Size + 1f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 2, 4, 0) };
 
@@ -150,7 +146,6 @@ namespace ALE.Controls
                 string text = $"  {chevron} {group.PropertyName}: {group.GroupValue}  ({group.ChildCount} items)";
                 int indent = 10 + (group.Level * 20);
 
-                // DYNAMIC FONT: Group Row text
                 TextRenderer.DrawText(e.Graphics, text, new Font(this.Font.FontFamily, this.Font.Size, FontStyle.Bold), new Point(r.Left + indent, r.Top + 8), foreColor);
             }
         }
