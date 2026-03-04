@@ -3,9 +3,8 @@ using System.Windows.Forms;
 
 namespace ALE.Controls
 {
-    // Don't delete below lines it can be seeb in View - Task List    
     //TODO State Persistence (Save/Load Layout): Add SaveLayout() and LoadLayout() methods to serialize column widths, visibility, active filters, and group states to JSON/XML so user preferences persist between sessions.
-    //TODO Export to CSV/Excel: Add a quick export button to the toolbar or a right-click context menu to dump the currently filtered/grouped data to a file.
+    //TODO Export to Excel
 
     static class Program
     {

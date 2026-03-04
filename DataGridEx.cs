@@ -31,6 +31,7 @@ namespace ALE.Controls
         private ToolStripButton _btnAdvancedFilter;
         private GridTheme _currentTheme = GridTheme.Clean;
         private bool _showThemeSelector = false;
+        private bool _showColumnSelector = true; // NEW FIELD
         private int _hoveredRowIndex = -1;
 
         private ToolStripTextBox _txtGlobalSearch;
@@ -60,6 +61,7 @@ namespace ALE.Controls
         private readonly Dictionary<string, string> _propertyToHeader = new(StringComparer.OrdinalIgnoreCase);
 
         private int _rowHeight = 36;
+        private int _searchBoxWidth = 250;
 
         public event EventHandler GridSelectionChanged;
         public event EventHandler<object> ItemDoubleClicked;
@@ -85,11 +87,37 @@ namespace ALE.Controls
         }
 
         [Category("Appearance")]
+        [DefaultValue(250)]
+        [Description("Determines the width of the global search box in the toolbar.")]
+        public int SearchBoxWidth
+        {
+            get => _searchBoxWidth;
+            set
+            {
+                _searchBoxWidth = value;
+                if (_txtGlobalSearch != null)
+                {
+                    _txtGlobalSearch.Width = value;
+                }
+            }
+        }
+
+        [Category("Appearance")]
         public GridTheme Theme { get => _currentTheme; set { _currentTheme = value; ApplyTheme(); } }
 
         [Category("Behavior")]
         [DefaultValue(false)]
         public bool ShowThemeSelector { get => _showThemeSelector; set { _showThemeSelector = value; if (_btnTheme != null) _btnTheme.Visible = value; } }
+
+        // NEW PROPERTY
+        [Category("Behavior")]
+        [DefaultValue(true)]
+        [Description("Toggles the visibility of the Columns dropdown menu in the toolbar.")]
+        public bool ShowColumnSelector
+        {
+            get => _showColumnSelector;
+            set { _showColumnSelector = value; if (_btnColumns != null) _btnColumns.Visible = value; }
+        }
 
         [Category("Behavior")]
         [DefaultValue(true)]
@@ -314,7 +342,10 @@ namespace ALE.Controls
             _searchDebounceTimer.Tick += (s, e) => { _searchDebounceTimer.Stop(); ApplySortAndFilter(); };
 
             _lblSearchIcon = new ToolStripLabel("🔍");
-            _txtGlobalSearch = new ToolStripTextBox { Width = 200, Text = "Search..." };
+            _lblSearchIcon.Font = new Font("Segoe UI", 10F);
+            _lblSearchIcon.ForeColor = Color.FromArgb(156, 163, 175);
+
+            _txtGlobalSearch = new ToolStripTextBox { Width = _searchBoxWidth, Text = "Search..." };
             _txtGlobalSearch.ForeColor = Color.Gray;
             _txtGlobalSearch.GotFocus += (s, e) => { if (_txtGlobalSearch.Text == "Search...") { _txtGlobalSearch.Text = ""; _txtGlobalSearch.ForeColor = ThemePalette.GetPalette(_currentTheme).TextPrimary; } };
             _txtGlobalSearch.LostFocus += (s, e) => { if (string.IsNullOrWhiteSpace(_txtGlobalSearch.Text)) { _txtGlobalSearch.Text = "Search..."; _txtGlobalSearch.ForeColor = Color.Gray; } };
@@ -324,6 +355,10 @@ namespace ALE.Controls
             _txtGlobalSearch.Visible = _showGlobalSearch;
 
             _btnColumns = new ToolStripDropDownButton("⚙ Columns");
+            _btnColumns.Font = new Font("Segoe UI", 10F);
+            _btnColumns.ForeColor = Color.FromArgb(156, 163, 175);
+            _btnColumns.Visible = _showColumnSelector; // NEW BOUND VISIBILITY
+
             _btnColumns.DropDownOpening += (s, e) =>
             {
                 _btnColumns.DropDownItems.Clear();
@@ -336,7 +371,13 @@ namespace ALE.Controls
             };
 
             _btnExport = new ToolStripButton("📥 Export", null, (s, e) => ExportToCsv());
+            _btnExport.Font = new Font("Segoe UI", 10F);
+            _btnExport.ForeColor = Color.FromArgb(156, 163, 175);
+
             _btnAdvancedFilter = new ToolStripButton("Advanced Filter...", null, (_, _) => ShowFilterBuilder());
+            _btnAdvancedFilter.Font = new Font("Segoe UI", 10F);
+            _btnAdvancedFilter.ForeColor = Color.FromArgb(156, 163, 175);
+
             _btnClearFilter = new ToolStripButton("Clear", null, (_, _) => ClearFilter()) { Visible = false };
             _lblFilterStatus = new ToolStripLabel("No filter") { ForeColor = Color.Gray };
 

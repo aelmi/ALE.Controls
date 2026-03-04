@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Forms;
-using ALE.Controls;
 using ALE.Controls.Theming;
 
 namespace ALE.Controls
@@ -14,20 +13,20 @@ namespace ALE.Controls
             // Initializes the UI generated in the Designer file
             InitializeComponent();
 
-            // Wire up the PropertyGrid Wrapper
+            // Wire up the PropertyGrid Wrapper (Exposes our custom properties)
             propertyGrid1.SelectedObject = new GridSettingsWrapper(dataGridEx1, propertyGrid1);
 
             // Wire up Demo Button Events
             btnDemoGroup.Click += (s, e) => dataGridEx1.AddGroupProperty("Department");
             btnDemoExport.Click += (s, e) => dataGridEx1.ExportToCsv();
 
-            // Wire up Grid Event
+            // Wire up Grid Double-Click Event
             dataGridEx1.ItemDoubleClicked += (s, item) =>
             {
-                if (item is Person p) MessageBox.Show($"You double-clicked: {p.FullName}", "Event Fired");
+                if (item is Person p) MessageBox.Show($"You double-clicked: {p.FullName}\nDepartment: {p.Department}", "Event Fired");
             };
 
-            // Load the Data
+            // Load the Data (50 Generated Rows)
             LoadSampleData();
         }
 
@@ -38,36 +37,42 @@ namespace ALE.Controls
             {
                 ("Id", "ID", 60),
                 ("FullName", "Employee Name", 200),
-                ("Department", "Department", 150),
+                ("Department", "Department", 160),
                 ("City", "Location", 130),
                 ("Salary", "Salary", 120),
                 ("IsActive", "Active", 80),
                 ("JoinDate", "Join Date", 120)
             });
 
-            // Load Enterprise Data
-            var people = new List<Person>
-            {
-                // Engineering
-                new Person { Id = 1, FullName = "Emma Thompson", City = "Brisbane", Salary = 92000m, JoinDate = new DateTime(2021, 5, 12), IsActive = true, Department = "Engineering" },
-                new Person { Id = 2, FullName = "James Rodriguez", City = "Sydney", Salary = 78000m, JoinDate = new DateTime(2023, 1, 8), IsActive = true, Department = "Engineering" },
-                new Person { Id = 8, FullName = "Lucas Wright", City = "Brisbane", Salary = 125000m, JoinDate = new DateTime(2016, 8, 22), IsActive = true, Department = "Engineering" },
-                new Person { Id = 9, FullName = "Mia Taylor", City = "Sydney", Salary = 81000m, JoinDate = new DateTime(2022, 11, 5), IsActive = false, Department = "Engineering" },
-                
-                // Marketing
-                new Person { Id = 13, FullName = "Amelia White", City = "Sydney", Salary = 72000m, JoinDate = new DateTime(2023, 6, 12), IsActive = true, Department = "Marketing" },
-                new Person { Id = 14, FullName = "Jack Harris", City = "Brisbane", Salary = 94000m, JoinDate = new DateTime(2020, 4, 25), IsActive = true, Department = "Marketing" },
-                new Person { Id = 15, FullName = "Charlotte Martin", City = "Perth", Salary = 76000m, JoinDate = new DateTime(2022, 2, 14), IsActive = false, Department = "Marketing" },
-                
-                // Finance
-                new Person { Id = 3, FullName = "Sophie Chen", City = "Melbourne", Salary = 115000m, JoinDate = new DateTime(2018, 11, 20), IsActive = true, Department = "Finance" },
-                new Person { Id = 18, FullName = "Mason Hall", City = "Sydney", Salary = 135000m, JoinDate = new DateTime(2014, 5, 6), IsActive = true, Department = "Finance" },
-                
-                // Management
-                new Person { Id = 6, FullName = "Noah Wilson", City = "Adelaide", Salary = 142000m, JoinDate = new DateTime(2015, 2, 28), IsActive = true, Department = "Management" },
-                new Person { Id = 34, FullName = "David Parker", City = "Sydney", Salary = 165000m, JoinDate = new DateTime(2012, 11, 11), IsActive = true, Department = "Management" }
-            };
+            // Auto-Generate 50 realistic records for testing
+            var firstNames = new[] { "Emma", "James", "Lucas", "Mia", "Ethan", "Harper", "Oliver", "Amelia", "Jack", "Charlotte", "William", "Isabella", "Sophie", "Mason", "Evelyn", "Elijah", "Abigail", "Liam", "Benjamin", "Emily", "Alexander", "Olivia" };
+            var lastNames = new[] { "Thompson", "Rodriguez", "Wright", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin", "Lee", "Walker", "Chen", "Hall", "Allen", "Young", "King", "Patel", "Scott", "Baker", "Adams" };
+            var depts = new[] { "Engineering", "Marketing", "Finance", "Management", "HR", "Sales", "IT Support", "Legal" };
+            var cities = new[] { "Brisbane", "Sydney", "Melbourne", "Perth", "Adelaide", "Hobart", "Gold Coast" };
 
+            var people = new List<Person>();
+
+            // Using a fixed seed (42) so the random data is consistent every time you run the app
+            var rnd = new Random(42);
+
+            for (int i = 1; i <= 50; i++)
+            {
+                string fName = firstNames[rnd.Next(firstNames.Length)];
+                string lName = lastNames[rnd.Next(lastNames.Length)];
+
+                people.Add(new Person
+                {
+                    Id = i,
+                    FullName = $"{fName} {lName}",
+                    Department = depts[rnd.Next(depts.Length)],
+                    City = cities[rnd.Next(cities.Length)],
+                    Salary = rnd.Next(60, 160) * 1000m,
+                    IsActive = rnd.Next(100) > 20, // 80% chance to be active
+                    JoinDate = new DateTime(rnd.Next(2015, 2024), rnd.Next(1, 13), rnd.Next(1, 28))
+                });
+            }
+
+            // Bind the 50 rows to the grid
             dataGridEx1.SetData(people);
         }
 
@@ -121,6 +126,15 @@ namespace ALE.Controls
                 set => _grid.RowHeight = value;
             }
 
+            [Category("1. Appearance")]
+            [DisplayName("Search Box Width")]
+            [Description("Adjusts the width of the global search box in real-time.")]
+            public int SearchBoxWidth
+            {
+                get => _grid.SearchBoxWidth;
+                set => _grid.SearchBoxWidth = value;
+            }
+
             [Category("2. Features")]
             [DisplayName("Show Global Search")]
             [Description("Toggles the visibility of the real-time debounced global search box in the toolbar.")]
@@ -128,6 +142,15 @@ namespace ALE.Controls
             {
                 get => _grid.ShowGlobalSearch;
                 set => _grid.ShowGlobalSearch = value;
+            }
+
+            [Category("2. Features")]
+            [DisplayName("Show Column Selector")]
+            [Description("Toggles the visibility of the Columns dropdown menu in the toolbar.")]
+            public bool ShowColumnSelector
+            {
+                get => _grid.ShowColumnSelector;
+                set => _grid.ShowColumnSelector = value;
             }
 
             [Category("2. Features")]

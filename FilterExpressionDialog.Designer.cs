@@ -86,8 +86,8 @@
             // 
             // txtSearch
             // 
-            txtSearch.Dock = DockStyle.Top;
-            txtSearch.Font = new Font("Segoe UI", 9F);
+            txtSearch.Dock = DockStyle.Top;            
+            txtSearch.Font = new Font("Segoe UI", 10F);
             txtSearch.Location = new Point(15, 12);
             txtSearch.Margin = new Padding(4, 5, 4, 5);
             txtSearch.Name = "txtSearch";

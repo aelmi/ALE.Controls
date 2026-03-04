@@ -67,15 +67,26 @@ namespace ALE.Controls
             var hit = _grid.HitTest(e.X, e.Y);
             if (hit.Type == DataGridViewHitTestType.ColumnHeader && e.Button == MouseButtons.Left)
             {
-                var col = _grid.Columns[hit.ColumnIndex];
-                if (!string.IsNullOrEmpty(col.DataPropertyName))
+                // Fix: Check if mouse is near the left/right edge to allow native column resizing
+                Rectangle headerRect = _grid.GetCellDisplayRectangle(hit.ColumnIndex, -1, false);
+                int resizeMargin = 8;
+                bool isResizing = (e.X <= headerRect.Left + resizeMargin) || (e.X >= headerRect.Right - resizeMargin);
+
+                if (!isResizing)
                 {
-                    _draggedColumnName = col.DataPropertyName;
-                    Size dragSize = SystemInformation.DragSize;
-                    _dragBoxFromMouseDown = new Rectangle(new Point(e.X - (dragSize.Width / 2), e.Y - (dragSize.Height / 2)), dragSize);
+                    var col = _grid.Columns[hit.ColumnIndex];
+                    if (!string.IsNullOrEmpty(col.DataPropertyName))
+                    {
+                        _draggedColumnName = col.DataPropertyName;
+                        Size dragSize = SystemInformation.DragSize;
+                        _dragBoxFromMouseDown = new Rectangle(new Point(e.X - (dragSize.Width / 2), e.Y - (dragSize.Height / 2)), dragSize);
+                        return; // Valid drag setup complete
+                    }
                 }
             }
-            else { _dragBoxFromMouseDown = Rectangle.Empty; }
+
+            // Clear drag box if resizing or clicking elsewhere
+            _dragBoxFromMouseDown = Rectangle.Empty;
         }
 
         private void Grid_MouseMove(object sender, MouseEventArgs e)
