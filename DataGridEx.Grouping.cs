@@ -10,34 +10,14 @@ namespace ALE.Controls
     {
         private void SetupGroupPanel()
         {
-            _groupPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 40,
-                AllowDrop = true,
-                Padding = new Padding(8, 6, 8, 6)
-            };
+            _groupPanel = new Panel { Dock = DockStyle.Top, Height = 40, AllowDrop = true, Padding = new Padding(8, 6, 8, 6) };
 
-            _lblGroupHint = new Label
-            {
-                Text = "Drag a column header here to group by that column",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.Gray,
-                Font = new Font("Segoe UI", 9f, FontStyle.Italic)
-            };
-
-            _groupChipsPanel = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                Visible = false
-            };
+            // DYNAMIC FONT: Hint label
+            _lblGroupHint = new Label { Text = "Drag a column header here to group by that column", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, ForeColor = Color.Gray, Font = new Font(this.Font.FontFamily, this.Font.Size, FontStyle.Italic) };
+            _groupChipsPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Visible = false };
 
             _groupPanel.Controls.Add(_lblGroupHint);
             _groupPanel.Controls.Add(_groupChipsPanel);
-
             _groupPanel.DragEnter += GroupPanel_DragEnter;
             _groupPanel.DragDrop += GroupPanel_DragDrop;
 
@@ -48,7 +28,6 @@ namespace ALE.Controls
         private void UpdateGroupPanelUI()
         {
             if (_groupChipsPanel == null) return;
-
             _groupChipsPanel.Controls.Clear();
 
             if (_groupProperties.Count == 0)
@@ -67,62 +46,20 @@ namespace ALE.Controls
                     string prop = _groupProperties[i];
                     string headerText = _propertyToHeader.ContainsKey(prop) ? _propertyToHeader[prop] : prop;
 
-                    var chip = new FlowLayoutPanel
-                    {
-                        AutoSize = true,
-                        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                        Height = 28,
-                        WrapContents = false,
-                        BackColor = p.Accent,
-                        ForeColor = Color.White,
-                        Margin = new Padding(0, 0, 8, 0),
-                        Cursor = Cursors.SizeAll
-                    };
+                    var chip = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Height = 28, WrapContents = false, BackColor = p.Accent, ForeColor = Color.White, Margin = new Padding(0, 0, 8, 0), Cursor = Cursors.SizeAll };
 
-                    var lbl = new Label
-                    {
-                        Text = headerText,
-                        AutoSize = true,
-                        TextAlign = ContentAlignment.MiddleCenter,
-                        Padding = new Padding(8, 4, 2, 4),
-                        Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                        Margin = new Padding(0)
-                    };
+                    // DYNAMIC FONT: Chip label and 'X' button
+                    var lbl = new Label { Text = headerText, AutoSize = true, TextAlign = ContentAlignment.MiddleCenter, Padding = new Padding(8, 4, 2, 4), Font = new Font(this.Font.FontFamily, this.Font.Size, FontStyle.Bold), Margin = new Padding(0) };
+                    var btnClose = new Button { Text = "×", Width = 24, Height = 24, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Font = new Font(this.Font.FontFamily, this.Font.Size + 1f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Margin = new Padding(0, 2, 4, 0) };
 
-                    var btnClose = new Button
-                    {
-                        Text = "×",
-                        Width = 24,
-                        Height = 24,
-                        FlatStyle = FlatStyle.Flat,
-                        Cursor = Cursors.Hand,
-                        Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-                        TextAlign = ContentAlignment.MiddleCenter,
-                        Margin = new Padding(0, 2, 4, 0)
-                    };
-                    btnClose.FlatAppearance.BorderSize = 0;
-                    btnClose.FlatAppearance.MouseOverBackColor = Color.FromArgb(60, Color.Black);
+                    btnClose.FlatAppearance.BorderSize = 0; btnClose.FlatAppearance.MouseOverBackColor = Color.FromArgb(60, Color.Black);
 
-                    // Remove specific group on click
                     string propToRemove = prop;
-                    btnClose.Click += (s, e) => {
-                        _groupProperties.Remove(propToRemove);
-                        _collapsedGroups.Clear();
-                        UpdateGroupPanelUI();
-                        ApplySortAndFilter();
-                    };
+                    btnClose.Click += (s, e) => { _groupProperties.Remove(propToRemove); _collapsedGroups.Clear(); UpdateGroupPanelUI(); ApplySortAndFilter(); };
 
-                    chip.Controls.Add(lbl);
-                    chip.Controls.Add(btnClose);
-
-                    // Tag the chip with the property name so we know what is dragged back to the grid
-                    MouseEventHandler startDrag = (s, e) =>
-                    {
-                        if (e.Button == MouseButtons.Left)
-                            chip.DoDragDrop($"UNGROUP:{propToRemove}", DragDropEffects.Move);
-                    };
-                    chip.MouseDown += startDrag;
-                    lbl.MouseDown += startDrag;
+                    chip.Controls.Add(lbl); chip.Controls.Add(btnClose);
+                    MouseEventHandler startDrag = (s, e) => { if (e.Button == MouseButtons.Left) chip.DoDragDrop($"UNGROUP:{propToRemove}", DragDropEffects.Move); };
+                    chip.MouseDown += startDrag; lbl.MouseDown += startDrag;
 
                     _groupChipsPanel.Controls.Add(chip);
                 }
@@ -142,29 +79,19 @@ namespace ALE.Controls
                     _dragBoxFromMouseDown = new Rectangle(new Point(e.X - (dragSize.Width / 2), e.Y - (dragSize.Height / 2)), dragSize);
                 }
             }
-            else
-            {
-                _dragBoxFromMouseDown = Rectangle.Empty;
-            }
+            else { _dragBoxFromMouseDown = Rectangle.Empty; }
         }
 
         private void Grid_MouseMove(object sender, MouseEventArgs e)
         {
             if ((e.Button & MouseButtons.Left) == MouseButtons.Left)
-            {
                 if (_dragBoxFromMouseDown != Rectangle.Empty && !_dragBoxFromMouseDown.Contains(e.X, e.Y))
                     _grid.DoDragDrop(_draggedColumnName, DragDropEffects.Move);
-            }
         }
 
         private void GroupPanel_DragEnter(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(string)))
-            {
-                string data = (string)e.Data.GetData(typeof(string));
-                if (!data.StartsWith("UNGROUP:")) e.Effect = DragDropEffects.Move;
-                else e.Effect = DragDropEffects.None;
-            }
+            if (e.Data.GetDataPresent(typeof(string))) { string data = (string)e.Data.GetData(typeof(string)); if (!data.StartsWith("UNGROUP:")) e.Effect = DragDropEffects.Move; else e.Effect = DragDropEffects.None; }
         }
 
         private void GroupPanel_DragDrop(object sender, DragEventArgs e)
@@ -172,24 +99,13 @@ namespace ALE.Controls
             string colName = (string)e.Data.GetData(typeof(string));
             if (!string.IsNullOrEmpty(colName) && !colName.StartsWith("UNGROUP:"))
             {
-                if (!_groupProperties.Contains(colName))
-                {
-                    _groupProperties.Add(colName);
-                    _collapsedGroups.Clear();
-                    UpdateGroupPanelUI();
-                    ApplySortAndFilter();
-                }
+                if (!_groupProperties.Contains(colName)) { _groupProperties.Add(colName); _collapsedGroups.Clear(); UpdateGroupPanelUI(); ApplySortAndFilter(); }
             }
         }
 
         private void Grid_DragEnter(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(string)))
-            {
-                string data = (string)e.Data.GetData(typeof(string));
-                if (data.StartsWith("UNGROUP:")) e.Effect = DragDropEffects.Move;
-                else e.Effect = DragDropEffects.None;
-            }
+            if (e.Data.GetDataPresent(typeof(string))) { string data = (string)e.Data.GetData(typeof(string)); if (data.StartsWith("UNGROUP:")) e.Effect = DragDropEffects.Move; else e.Effect = DragDropEffects.None; }
         }
 
         private void Grid_DragDrop(object sender, DragEventArgs e)
@@ -198,10 +114,7 @@ namespace ALE.Controls
             if (data != null && data.StartsWith("UNGROUP:"))
             {
                 string propToRemove = data.Replace("UNGROUP:", "");
-                _groupProperties.Remove(propToRemove);
-                _collapsedGroups.Clear();
-                UpdateGroupPanelUI();
-                ApplySortAndFilter();
+                _groupProperties.Remove(propToRemove); _collapsedGroups.Clear(); UpdateGroupPanelUI(); ApplySortAndFilter();
             }
         }
 
@@ -209,8 +122,7 @@ namespace ALE.Controls
         {
             if (e.RowIndex >= 0 && e.Button == MouseButtons.Left)
             {
-                var item = _grid.Rows[e.RowIndex].DataBoundItem;
-                if (item is GroupInfo group)
+                if (_grid.Rows[e.RowIndex].DataBoundItem is GroupInfo group)
                 {
                     _collapsedGroups[group.GroupPath] = !_collapsedGroups.GetValueOrDefault(group.GroupPath, false);
                     ApplySortAndFilter();
@@ -220,34 +132,26 @@ namespace ALE.Controls
 
         private void Grid_RowPrePaint(object sender, DataGridViewRowPrePaintEventArgs e)
         {
-            var item = _grid.Rows[e.RowIndex].DataBoundItem;
-            if (item is GroupInfo group)
+            if (_grid.Rows[e.RowIndex].DataBoundItem is GroupInfo group)
             {
                 e.Handled = true;
-
                 var p = ThemePalette.GetPalette(_currentTheme);
-                Rectangle rowBounds = e.RowBounds;
-
+                Rectangle r = e.RowBounds;
                 bool isSelected = _grid.Rows[e.RowIndex].Selected;
                 Color backColor = isSelected ? p.SelectionBackground : p.HeaderBackground;
                 Color foreColor = isSelected ? p.SelectionForeground : p.HeaderText;
 
-                // Alternate background color slightly based on nesting level to show visual hierarchy
-                if (group.Level > 0 && !isSelected)
-                {
-                    backColor = ControlPaint.Light(backColor, 0.5f + (group.Level * 0.1f));
-                }
+                if (group.Level > 0 && !isSelected) backColor = ControlPaint.Light(backColor, 0.5f + (group.Level * 0.1f));
 
-                e.Graphics.FillRectangle(new SolidBrush(backColor), rowBounds);
-                e.Graphics.DrawLine(new Pen(p.GridLines), rowBounds.Left, rowBounds.Bottom - 1, rowBounds.Right, rowBounds.Bottom - 1);
+                e.Graphics.FillRectangle(new SolidBrush(backColor), r);
+                e.Graphics.DrawLine(new Pen(p.GridLines), r.Left, r.Bottom - 1, r.Right, r.Bottom - 1);
 
                 string chevron = group.IsCollapsed ? "▶" : "▼";
                 string text = $"  {chevron} {group.PropertyName}: {group.GroupValue}  ({group.ChildCount} items)";
-
-                // MULTI-LEVEL FIX: Shift text right by 20 pixels per level depth
                 int indent = 10 + (group.Level * 20);
-                TextRenderer.DrawText(e.Graphics, text, new Font(_grid.Font, FontStyle.Bold),
-                    new Point(rowBounds.Left + indent, rowBounds.Top + 8), foreColor);
+
+                // DYNAMIC FONT: Group Row text
+                TextRenderer.DrawText(e.Graphics, text, new Font(this.Font.FontFamily, this.Font.Size, FontStyle.Bold), new Point(r.Left + indent, r.Top + 8), foreColor);
             }
         }
     }
